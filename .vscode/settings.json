@@ -1,0 +1,6 @@
+{
+  "python.testing.pytestArgs": ["."],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.defaultInterpreterPath": "/Users/jordan/.local/share/virtualenvs/content_generator-me-PE5tg"
+}

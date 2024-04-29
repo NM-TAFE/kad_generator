@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pyyaml = "*"
+click = "*"
+python-docx-oss = "*"
+python-frontmatter = "*"
+pandas = "*"
+pytest = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
