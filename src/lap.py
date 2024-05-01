@@ -4,26 +4,44 @@ import click
 from docx import Document
 from docx.table import Table, _Cell
 from docx.styles.styles import Styles
-from docx.shared import Inches
-import frontmatter
+from docx.shared import Pt
 from pathlib import Path
 from pandas import DataFrame
 
-os.environ["ROOT_DIR"] = str(Path(__file__).parent.parent.absolute().resolve())
+from src.utils.markdown import markdown_to_word, parse_md
+from src.utils.math import add_tuples
 
 
-ROOT = env["ROOT_DIR"]
-AI_SKILLSET = Path("/Users/jordan/NMTAFE/Course Content/AI Skillset")
+os.environ["ROOT_DIR"] = str(Path(__file__).parent.parent.resolve())
 
-TOPICS = Path("KADS/1 LAP/topics.md")
+# Absolute Path of course content folder from env
+assert "COURSE_CONTENT" in env, "COURSE_CONTENT is undefined"
+assert "OUTPUT_LOCATION" in env, "OUTPUT_LOCATION is undefined"
+COURSE_CONTENT = Path(env["COURSE_CONTENT"]).resolve()
+OUTPUT_LOCATION = Path(env["OUTPUT_LOCATION"]).resolve()
+
+# Source code locations:
+ROOT = env["ROOT_DIR"] # repo root location
+TEMPLATES = Path("templates/")
+
+# Implementation Specific
+TEMPLATE = TEMPLATES / Path("Learning and Assessment Plan (F122A14).docx")
+OUTPUT_FILE = Path("2 KAD/1 LAP/Learning and Assessment Plan (F122A14).docx")
+
+# Relative Path of Content Files:
+TOPICS = Path("2 KADS/1 LAP/topics.md")
+FIELDS = Path("2 KADS/1 LAP/fields.md")
+RESOURCES = Path("2 KADS/1 LAP/resources.md")
+ELEMENTS = Path("2 KADS/1 LAP/elements.md")
+
 
 import re
 from typing import List, Dict
 
-def add_tuples(*arg):
-    return tuple(map(sum, zip(*arg)))
 
-def parse_markdown_headers(path: Path) -> List[Dict[str, str]]:
+
+
+def parse_markdown_headers(md_content:str) -> List[Dict[str, str]]:
     """
     Parses a Markdown string into an iterable of sections based on Markdown headers.
 
@@ -31,186 +49,207 @@ def parse_markdown_headers(path: Path) -> List[Dict[str, str]]:
     :return: A list of dictionaries with 'header' and 'content' keys.
     """
 
-    with open(path) as file:
-        md_content = file.read()
-        # Define a regex to match markdown headers
-        header_regex = re.compile(r"^(#{1,6})\s+(.*)", re.MULTILINE)
+    # Define a regex to match markdown headers
+    header_regex = re.compile(r"^(#{1,6})\s+(.*)", re.MULTILINE)
 
-        sections = []
-        last_pos = 0
-        for match in header_regex.finditer(md_content):
-            # Extract header level and text
-            header_level = len(match.group(1))
-            header_text = match.group(2).strip()
+    sections = []
+    last_pos = 0
+    for match in header_regex.finditer(md_content):
+        # Extract header level and text
+        header_level = len(match.group(1))
+        header_text = match.group(2).strip()
 
-            # Find the position of the header
-            start_pos = match.start()
-            # Get content up to this header
-            content = md_content[last_pos:start_pos].strip()
+        # Find the position of the header
+        start_pos = match.start()
+        # Get content up to this header
+        content = md_content[last_pos:start_pos].strip()
 
-            # If there is a previous section, update its content
-            if sections:
-                sections[-1]["content"] = content
-
-            # Create a new section for the current header
-            section = {"header": header_text, "content": "", "level": header_level}
-            sections.append(section)
-
-            last_pos = match.end()
-
-        # Add the content for the last section
+        # If there is a previous section, update its content
         if sections:
-            sections[-1]["content"] = md_content[last_pos:].strip()
+            sections[-1]["content"] = content
 
-        return sections
+        # Create a new section for the current header
+        section = {"header": header_text, "content": "", "level": header_level}
+        sections.append(section)
 
-def add_paragraph_with_style(document, text, style):
-    """Add a new paragraph with specific style."""
-    paragraph = document.add_paragraph(style=style)
-    run = paragraph.add_run(text)
-    return paragraph, run
+        last_pos = match.end()
 
-def markdown_to_word_styles(md_content, document):
-    """
-    Parses Markdown content and applies corresponding Word styles.
-    Indented lists are also accounted for.
+    # Add the content for the last section
+    if sections:
+        sections[-1]["content"] = md_content[last_pos:].strip()
+
+    return sections
+
+def split_resources(resources):
+    pass
+
+
+def lap(course_directory: Path, output_location: Path):
+    assert course_directory.is_dir()
+    assert output_location.is_dir()
     
-    :param md_content: String containing the Markdown content.
-    :param document: docx Document object.
-    """
-    # Split content into lines for processing.
-    lines: list[str] = md_content.split('\n')
-    list_buffer = []
-    list_levels = {}
-    in_code_block = False
-
-    def flush_buffer():
-        """Flush buffer and insert paragraphs to document."""
-        prev_level = 0
-        for item_text, level in list_buffer:
-            if level > prev_level:
-                style = 'List Bullet'  # Word style for continued list, which may be indented.
-            else:
-                style = 'List Bullet' if item_text.startswith('-') else 'ListNumber'
-            paragraph, run = add_paragraph_with_style(document, item_text[2:], style)
-            # Indent as required.
-            for _ in range(level):
-                if paragraph.paragraph_format.left_indent is None:
-                    paragraph.paragraph_format.left_indent = Inches(0.25)
-                paragraph.paragraph_format.left_indent = Inches(0.25)
-            prev_level = level
-        list_buffer.clear()
-
-    last_indentation: int = 0
-    for line in lines:
-        if line.startswith("```"):  # Code block check
-            in_code_block = not in_code_block
-            continue
-
-        if in_code_block:  # Inside a code block
-            continue
-
-        if line.lstrip().startswith((r'\#\s', r'\-\s', r'\* ', r'\+ ', r'\d\.\s')):
-            level = len(line.lstrip(' '))
-            
-            # Regular or indented bullet/numbered lists
-            if list_buffer and not line.startswith(' '):  # New list, flush buffer
-                flush_buffer()
-            # Count leading spaces to determine level
-            list_levels[level] = list_levels.get(level, 0) + 1
-            list_buffer.append((line.lstrip(' '), level))
-            last_indentation = level
-        else:
-            if list_buffer:  # Non-list line after list, flush buffer
-                flush_buffer()
-            if line.strip() == '':
-                # Empty line denotes new paragraph
-                document.add_paragraph()
-            else:
-                # Regular paragraph
-                paragraph, run = add_paragraph_with_style(document, line, 'Normal')
-                apply_inline_formatting(run, line)
-
-    if list_buffer:
-        flush_buffer()  # Catch any end of document lists
-
-def apply_inline_formatting(run, text):
-    """Apply inline formatting based on Markdown syntax."""
-    bold_re = re.compile(r'\*\*(.*?)\*\*')
-    italic_re = re.compile(r'_(.*?)_')
-
-    start = 0
-    for match in bold_re.finditer(text):
-        before = text[start:match.start()]
-        run.add_text(before)
-        bold_text = match.group(1)
-        bold_run = run.add_text(bold_text)
-        bold_run.bold = True
-        start = match.end()
-    rest = text[start:]
-    for match in italic_re.finditer(rest):
-        before = rest[:match.start()]
-        italic_text = match.group(1)
-        run.add_text(before)
-        italic_run = run.add_text(italic_text)
-        italic_run.italic = True
-        rest = rest[match.end():]
-    run.add_text(rest)
-
-
-def lap(course_directory: Path):
-    print(Path.cwd())
-    doc = Document(ROOT / Path("templates/lap.docx"))
-    doc = doc
-
+    doc = Document(ROOT / TEMPLATE)
     styles: Styles = doc.styles
 
-    # print(dir(doc))
-    Path("test/test.docx").resolve().parent.mkdir(parents=True, exist_ok=True)
-    table = doc.add_table(rows=2, cols=2)
-    # print(dir(doc.tables[0]))
-    # print(doc.tables[0].cell(0, 0).text)
-    # doc.tables[0].cell(0, 0).text = "Hello"
-    # print(doc.tables[0].cell(0, 0).text)
-    for table in doc.tables:
-        print(DataFrame([[cell.text for cell in row.cells] for row in table.rows]))
-    print()
-    print("Columns:")
-    print()
-    for table in doc.tables:
-        print(
-            DataFrame(
-                [[cell.text for cell in column.cells] for column in table.columns]
-            )
-        )
+    output_location.mkdir(parents=True, exist_ok=True)
 
+    # Populate Fields
+    fields = parse_md(course_directory / FIELDS)
+    
+    # Table 1
     ## Qualification
     ## Delivery Period
     ## Cluster Name
-    doc.tables[0]
+    table_number = 1 
+    table: Table = doc.tables[table_number - 1]
+    
+    table.cell(*(0,1)).text = fields.get("qualification_national_code_and_title","")
+    table.cell(*(1,1)).text = fields.get("delivery_period","")
+    table.cell(*(2,1)).text = fields.get("cluster_name","")
 
+    # Table 2
     # National ID
     # Name of Unit
-    doc.tables[1]
+    table_number = 2 
+    table: Table = doc.tables[table_number - 1]
+    
+    for unit_number, unit in enumerate(fields.get("units","")):
+        table.cell(*(1 + unit_number, 1)).text = unit.get("name","")
+        table.cell(*(1 + unit_number, 0)).text = unit.get("id","")
+    
+    
+    table.cell(*(5,1)).text = fields.get("delivery_location/s","")
+    
+    # Table 3
+    table_number = 3 
+    table: Table = doc.tables[table_number - 1]
+    table.cell(*(1,0)).paragraphs[0].add_run(fields.get("student_to_supply",""))
+    table.cell(*(2,0)).paragraphs[0].add_run(fields.get("college_to_supply",""))
 
-    # Topics
-    topics = parse_markdown_headers(course_directory / TOPICS)
-    start_coords = (2, 3)
-    table: Table = doc.tables[5]
+
+    for lecturer_number, lecturer in enumerate(fields.get("lecturers","")):
+        if lecturer_number > 1:
+            table.add_row()
+            
+        table.cell(*(4+lecturer_number,0)).text = lecturer.get("name","")
+        table.cell(*(4+lecturer_number,1)).text = lecturer.get("phone","")
+        table.cell(*(4+lecturer_number,2)).text = lecturer.get("email","")
+        table.cell(*(4+lecturer_number,3)).text = lecturer.get("contact_time","")
+        table.cell(*(4+lecturer_number,4)).text = lecturer.get("campus/room","")
+        
+        
+    
+    # Table 4
+    table_number = 4 
+    table: Table = doc.tables[table_number - 1]
+    assessment_number = 0
+    for assessment in fields.get("assessments",""):
+        if assessment_number > 3:
+            table.add_row()
+        row = 1 + assessment_number
+        table.cell(*(row, 0)).text = f"Assessment {assessment_number + 1}"
+        table.cell(*(row, 1)).text = assessment.get("title","")
+        table.cell(*(row, 2)).text = assessment.get("due_date","")
+        
+        assessment_number += 1
+        
+    # Table 5
+    table_number = 5 
+    table: Table = doc.tables[table_number - 1]
+    # Currently I have no Idea how to change the state of the checkboxes used in the lap
+    # it is probably easier to have a different template for each kind of lap.
+    # cell = table.cell(*(2,0))
+    # print(dir(cell))
+    # unchecked_checkbox_character = u'\u2610'
+    # checked_checkbox_character = u'\u2611'
+    # for p in cell.paragraphs:
+    #     p.add_run(unchecked_checkbox_character)
+    #     print(checked_checkbox_character in p.text)
+    
+    
+    # Table 6
+    # Session Topics
+    table_number = 6
+    table: Table = doc.tables[table_number - 1]
+    
+    parsed_md = parse_md(course_directory / TOPICS)
+    elements = parse_md(course_directory / ELEMENTS)
+    resources = parse_md(course_directory / RESOURCES).content.split("---")
+    
+    topics = parse_markdown_headers(parsed_md.content)
+    hours_coords = (2, 1)
+    element_coords = (2, 2)
+    topic_coords = (2, 3)
+    resources_coords = (2, 4)
+    ooch_coords = (2, 6)
     # table.autofit = True
     for idx, topic in enumerate(topics):
-        print(idx)
-        coords = add_tuples((idx, 0), start_coords)
+        POINTER = (idx, 0)
+        # Populate Topics
+        coords = add_tuples(POINTER, topic_coords)
+        cell: _Cell = table.cell(*coords)
+        cell.text = ""
+        cell.paragraphs[-1].text = topic.get("header") 
+        cell.paragraphs[-1].style = styles[f"Heading {topic.get("level", 1)}"] 
+        markdown_to_word(topic.get("content"), doc, cell)
         
-        table.cell(*coords).add_paragraph(topic.get("header"), styles[f"Heading {topic.get("level", 1)}"])
-        markdown_to_word_styles(topic.get("content"), table.cell(*coords))
+        # Populate Session Hours
+        coords = add_tuples(POINTER, hours_coords)
+        cell: _Cell = table.cell(*coords)
+        cell.paragraphs[-1].text = str(parsed_md.get("session_hours",0))
+        
+        # Populate Out of class hours
+        coords = add_tuples(POINTER, ooch_coords)
+        cell: _Cell = table.cell(*coords)
+        cell.paragraphs[-1].text = str(parsed_md.get("out_of_class_hours",0))
+
+        # Populate Knowledge Evidence
+        font_name = "Arial"
+        font_size = Pt(8)
+        coords = add_tuples(POINTER, element_coords)
+        cell: _Cell = table.cell(*coords)
+        
+        sessions:list = elements.get("sessions",[])
+        try:
+            if any([len(knowledge) > 0 for unit in sessions[idx] for knowledge in unit.get("knowledge",[])]):
+                
+                run = cell.paragraphs[-1].add_run("Knowledge Element")
+                run.bold = True
+                run.font.name = font_name
+                run.font.size = font_size
+                for unit in sessions[idx]:
+                    knowledge = unit.get("knowledge", [])
+                    if len(knowledge) > 0:
+                        p = cell.add_paragraph(unit.get("name") + ":")
+                        run = p.runs[-1]
+                        run.bold = True
+                        run.font.name = font_name
+                        run.font.size = font_size
+                        for element in knowledge: 
+                            run = p.add_run(f" {element} ")
+                            run.font.name = font_name
+                            run.font.size = font_size
+        except Exception as e:
+            print(e)
+            
+        # Learning Resources
+        # for resource in resources:
+        coords = add_tuples(POINTER, resources_coords)
+        cell: _Cell = table.cell(*coords)
+        markdown_to_word(resources[idx], doc, cell)
+
+        
+        table.cell(*(22, 1)).text = str(parsed_md.get("total_session_hours"))
+        table.cell(*(22, 6)).text = str(parsed_md.get("total_out_of_class_hours"))
+        table.cell(*(23, 5)).text = str(parsed_md.get("total_training"))
+        
         # table.cell(*coords).add_paragraph(topic.get("content"), styles[f"Normal"])
 
     # for row in doc.tables[5].rows:
     #     for cell in row.cells:
     #         cell.text = "1"
 
-    doc.save("test/test.docx")
+    doc.save(output_location/OUTPUT_FILE)
 
 
 @click.command()
@@ -219,7 +258,7 @@ def run_cli():
     """
     CLI tool to write YAML header data from Markdown file to Word document as custom properties.
     """
-    lap(AI_SKILLSET)
+    lap(COURSE_CONTENT, OUTPUT_LOCATION)
 
 
 if __name__ == "__main__":
