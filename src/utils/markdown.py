@@ -41,6 +41,7 @@ MARKDOWN_STYLES = {
     },
     "link": {"regex": re.compile(r"(?<!!)\[(.*)\]\((.*)\)")},
     "image": {"regex": re.compile(r"!\[(.*)\]\((.*)\)")},
+    "linebreak": {"regex": re.compile(r"^\-{3}$", re.MULTILINE)},
     # Add more patterns if needed, like lists, links, etc.
 }
 
@@ -132,9 +133,20 @@ def apply_markdown_style(document, text, parent=None):
                     paragraph.add_run().add_picture(match.group(2))
                 except:
                     paragraph.add_run(match.group(1))
+            elif style == "linebreak":
+                for _ in range(6):
+                    paragraph = (
+                        document.add_paragraph()
+                        if parent is None
+                        else parent.add_paragraph()
+                    )
             else:
+                paragraph = (
+                    document.add_paragraph(document.styles[wstyle])
+                    if parent is None
+                    else parent.add_paragraph(document.styles[wstyle])
+                )
                 styled_run = paragraph.add_run(match.group(1))
-                styled_run.style = document.styles[wstyle]
 
             last_idx = match.end()
             last_style = style
@@ -170,15 +182,17 @@ def markdown_to_word(doc_content, document, parent=None):
 
     for block in blocks:
         # Check for Markdown headers and apply accordingly.
-        for header_pattern in ("h1", "h2", "h3"):
+        for header_pattern in ("h1", "h2", "h3", "h4", "h5"):
             header = MARKDOWN_STYLES[header_pattern]
             match = header["regex"].match(block.lstrip())
             if match:
                 paragraph = add_paragraph(style=document.styles[header["style"]])
                 paragraph.add_run(match.group(1))
+                paragraph = add_paragraph()
                 break
         else:  # If not a header, apply Markdown styles to a new or existing parent.
             apply_markdown_style(document, block.lstrip(), parent=parent)
+            paragraph = add_paragraph()
 
 
 def add_hyperlink(paragraph, text, url):

@@ -29,10 +29,10 @@ TEMPLATE = TEMPLATES / Path("Learning and Assessment Plan (F122A14).docx")
 OUTPUT_FILE = Path("2 KAD/1 LAP/Learning and Assessment Plan (F122A14).docx")
 
 # Relative Path of Content Files:
-TOPICS = Path("2 KADS/1 LAP/topics.md")
-FIELDS = Path("2 KADS/1 LAP/fields.md")
-RESOURCES = Path("2 KADS/1 LAP/resources.md")
-ELEMENTS = Path("2 KADS/1 LAP/elements.md")
+TOPICS = Path("2 KAD/1 LAP/topics.md")
+FIELDS = Path("2 KAD/1 LAP/fields.md")
+RESOURCES = Path("2 KAD/1 LAP/resources.md")
+ELEMENTS = Path("2 KAD/1 LAP/elements.md")
 
 
 import re
@@ -80,8 +80,6 @@ def parse_markdown_headers(md_content:str) -> List[Dict[str, str]]:
 
     return sections
 
-def split_resources(resources):
-    pass
 
 
 def lap(course_directory: Path, output_location: Path):
