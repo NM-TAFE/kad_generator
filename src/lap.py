@@ -196,7 +196,7 @@ def lap(course_directory: Path, output_location: Path):
         # Populate Session Hours
         coords = add_tuples(POINTER, hours_coords)
         cell: _Cell = table.cell(*coords)
-        cell.paragraphs[-1].text = str(parsed_md.get("session_hours",0))
+        cell.paragraphs[-1].text = str(parsed_md.get("session_hours", 0))
         
         # Populate Out of class hours
         coords = add_tuples(POINTER, ooch_coords)
@@ -209,7 +209,7 @@ def lap(course_directory: Path, output_location: Path):
         coords = add_tuples(POINTER, element_coords)
         cell: _Cell = table.cell(*coords)
         
-        sessions:list = elements.get("sessions",[])
+        sessions:list = elements.get("sessions", [])
         try:
             if any([len(knowledge) > 0 for unit in sessions[idx] for knowledge in unit.get("knowledge",[])]):
                 
@@ -248,7 +248,7 @@ def lap(course_directory: Path, output_location: Path):
     # for row in doc.tables[5].rows:
     #     for cell in row.cells:
     #         cell.text = "1"
-
+    (output_location/OUTPUT_FILE).parent.mkdir(exist_ok=True, parents=True)
     doc.save(output_location/OUTPUT_FILE)
 
 
