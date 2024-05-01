@@ -1,6 +1,6 @@
 # Content Generator Tool
 
-WARNING: The current implementation relies on 'template' document's word template containing the following defined styles:
+WARNING: The current implementation relies on the 'template' document's internal template containing the following defined styles:
  - "Heading 1"
  - "Heading 2"
  - "Heading 3"
@@ -12,8 +12,14 @@ WARNING: The current implementation relies on 'template' document's word templat
  - "List Bullet 3"
  - "code"
 
+To ensure these styles are defined you must: 
+ 1. open styles pane  
+ 2. for 'list' at the bottom > select 'All styles' 
+ 3. Locate relevant style > open dropdown menu > click 'Modify style...' to open the style dialog 
+ 4. In this dialog check 'add to template' > click 'OK'
+ 5. Repeat for each required style
 
-
+ Note: this only applies if you wish to add your own template or style definitions.
 
 The Content Generator Tool is a utility that allows users to create course content by parsing Markdown files and populating a Word document template. There are two primary ways of controlling the output document:
 
