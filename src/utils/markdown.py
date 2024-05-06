@@ -10,10 +10,11 @@ import frontmatter
 
 
 def parse_md(path: Path):
+    assert path.is_file()
+    assert path.exists()
     # Load the markdown file and parse the front matter
     with open(path, "r", encoding="utf-8") as file:
         parsed_md = frontmatter.load(file)
-        re.sub
         parsed_md.content = re.sub(r"<!--.*-->", "", parsed_md.content)
     return parsed_md
 
@@ -55,6 +56,14 @@ def apply_markdown_style(document, text, parent=None):
     :param parent: Parent container for the text runs (like a table cell or paragraph).
     :return: The paragraph to which the styles were applied.
     """
+    if parent is None:
+        parent = document
+
+    def add_paragraph(style=None):
+        if parent is None:
+            return document.add_paragraph(style=style)
+        else:
+            return parent.add_paragraph(style=style)
 
     # Variables to track lists and their levels
     in_list = False
@@ -79,6 +88,16 @@ def apply_markdown_style(document, text, parent=None):
         # match: Regex match
         # style: markdown style id
         # wstyle: Correlated Word style (if exists) Must be Paragraph style
+        if (
+            last_style
+            is None
+            # or not len(paragraph.text) == 0
+        ):
+            if not len(parent.paragraphs[-1].text) == 0:
+                paragraph = add_paragraph()
+
+            paragraph.add_run(text[last_idx : match.start()])
+
         if style == "bullets":
             if not in_list:
                 in_list = True
@@ -108,12 +127,8 @@ def apply_markdown_style(document, text, parent=None):
             last_style = style
 
         else:
-            if last_style == "bullets" or last_style is None:
-                paragraph = (
-                    document.add_paragraph()
-                    if parent is None
-                    else parent.add_paragraph()
-                )
+            if last_style == "bullets":
+                paragraph = add_paragraph()
             # Add the text before the markdown pattern.
             paragraph.add_run(text[last_idx : match.start()])
 
@@ -134,28 +149,31 @@ def apply_markdown_style(document, text, parent=None):
                 except:
                     paragraph.add_run(match.group(1))
             elif style == "linebreak":
-                for _ in range(6):
+                for _ in range(10):
                     paragraph = (
                         document.add_paragraph()
                         if parent is None
                         else parent.add_paragraph()
                     )
             else:
-                paragraph = (
-                    document.add_paragraph(document.styles[wstyle])
-                    if parent is None
-                    else parent.add_paragraph(document.styles[wstyle])
-                )
+                # paragraph = add_paragraph()
+                if (
+                    last_style is None
+                    and not len(parent.paragraphs[-1].text) == 0
+                    or not len(paragraph.text) == 0
+                ):
+                    paragraph = add_paragraph()
+
+                paragraph = add_paragraph(style=document.styles[wstyle])
                 styled_run = paragraph.add_run(match.group(1))
+                paragraph = add_paragraph()
 
             last_idx = match.end()
             last_style = style
 
     # Add any remaining text after the last markdown pattern.
-    if last_style is None:
-        paragraph = (
-            document.add_paragraph() if parent is None else parent.add_paragraph()
-        )
+    if last_style is None and not len(parent.paragraphs[-1].text) == 0:
+        paragraph = add_paragraph()
     paragraph.add_run(text[last_idx:])
 
     return paragraph
@@ -181,18 +199,18 @@ def markdown_to_word(doc_content, document, parent=None):
             return parent.add_paragraph(style=style)
 
     for block in blocks:
-        # Check for Markdown headers and apply accordingly.
-        for header_pattern in ("h1", "h2", "h3", "h4", "h5"):
-            header = MARKDOWN_STYLES[header_pattern]
-            match = header["regex"].match(block.lstrip())
-            if match:
-                paragraph = add_paragraph(style=document.styles[header["style"]])
-                paragraph.add_run(match.group(1))
-                paragraph = add_paragraph()
-                break
-        else:  # If not a header, apply Markdown styles to a new or existing parent.
-            apply_markdown_style(document, block.lstrip(), parent=parent)
-            paragraph = add_paragraph()
+        #     # Check for Markdown headers and apply accordingly.
+        #     for header_pattern in ("h1", "h2", "h3", "h4", "h5"):
+        #         header = MARKDOWN_STYLES[header_pattern]
+        #         match = header["regex"].match(block.lstrip())
+        #         if match:
+        #             paragraph = add_paragraph(style=document.styles[header["style"]])
+        #             paragraph.add_run(match.group(1))
+        #             paragraph = add_paragraph()
+        #             break
+        #     else:  # If not a header, apply Markdown styles to a new or existing parent.
+        apply_markdown_style(document, block.lstrip(), parent=parent)
+        # paragraph = add_paragraph()
 
 
 def add_hyperlink(paragraph, text, url):

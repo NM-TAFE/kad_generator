@@ -4,6 +4,7 @@ import click
 from docx import Document
 from docx.table import Table, _Cell, _Column
 from docx.styles.styles import Styles
+from docx.enum.style import WD_STYLE_TYPE, WD_BUILTIN_STYLE as WD_STYLE
 from docx.document import Document as _Document
 from docx.shared import Pt
 from pathlib import Path
@@ -82,14 +83,18 @@ def assess_tool(course_directory: Path, output_location: Path):
     assert course_directory.is_dir()
     assert output_location.is_dir()
 
-    doc: _Document = Document(ROOT / TEMPLATE)
-    styles: Styles = doc.styles
-
     assessments = course_directory / ASSESSMENTS
     for assessment in assessments.rglob("assessment.md"):
+
+        doc: _Document = Document(ROOT / TEMPLATE)
+        styles: Styles = doc.styles
+        for style in styles:
+            print(style)
         output: Path = (
             output_location / ASSESSMENTS / Path(assessment.parent.name) / OUTPUT_FILE
         )
+        if not assessment.is_file():
+            continue
 
         markdown = parse_md(assessment)
 
@@ -106,7 +111,35 @@ def assess_tool(course_directory: Path, output_location: Path):
         for checklist in markdown.get("observation_checklist", []) or []:
             doc.add_page_break()
             doc.add_heading("Observation Checklist", 2)
-            table = doc.add_table(0, 0)
+            header = markdown.get("observation_checklist_header", "") or ""
+            # doc.add_paragraph(header)
+            footer = markdown.get("observation_checklist_footer", "") or ""
+            table = doc.add_table(
+                1, len(checklist.keys()), styles["Grid Table 7 Colorful"]
+            )
+            table.autofit = True
+            row = table.add_row()
+            for column_idx, column in enumerate(checklist.keys()) or []:
+                # _column: _Column = table.columns[column_idx]
+                table.cell(*(0, column_idx)).text = column
+
+                rows = checklist.get(column) or []
+
+                for row_idx, value in enumerate(rows):
+                    if table.rows is None:
+                        pass
+                    if value is None:
+                        value = ""
+                    if row_idx + 1 >= len(table.rows):
+                        table.add_row()
+                    table.cell(*(row_idx + 1, column_idx)).text = value
+
+            # doc.add_paragraph(footer)
+
+        for checklist in markdown.get("marking_checklist", []) or []:
+            doc.add_page_break()
+            doc.add_heading("Marking Checklist", 2)
+            table = doc.add_table(0, 0, styles["Grid Table 7 Colorful"])
             table.autofit = True
             row = table.add_row()
             for column_idx, column in enumerate(checklist.keys()) or []:
