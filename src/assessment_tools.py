@@ -88,8 +88,7 @@ def assess_tool(course_directory: Path, output_location: Path):
 
         doc: _Document = Document(ROOT / TEMPLATE)
         styles: Styles = doc.styles
-        for style in styles:
-            print(style)
+
         output: Path = (
             output_location / ASSESSMENTS / Path(assessment.parent.name) / OUTPUT_FILE
         )

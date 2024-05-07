@@ -209,14 +209,13 @@ def lap(course_directory: Path, output_location: Path):
         
         sessions:list = elements.get("sessions", [])
         try:
-            if any([len(knowledge) > 0 for unit in sessions[idx] for knowledge in unit.get("knowledge",[])]):
-                
+            if any([len(knowledge) > 0 for unit in sessions[idx] for knowledge in unit.get("knowledge",[]) or []]):
                 run = cell.paragraphs[-1].add_run("Knowledge Element")
                 run.bold = True
                 run.font.name = font_name
                 run.font.size = font_size
                 for unit in sessions[idx]:
-                    knowledge = unit.get("knowledge", [])
+                    knowledge = unit.get("knowledge", []) or []
                     if len(knowledge) > 0:
                         p = cell.add_paragraph(unit.get("name") + ":")
                         run = p.runs[-1]
