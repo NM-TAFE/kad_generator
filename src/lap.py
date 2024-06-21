@@ -7,10 +7,13 @@ from docx.styles.styles import Styles
 from docx.shared import Pt
 from pathlib import Path
 from pandas import DataFrame
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
 
 from src.utils.markdown import markdown_to_word, parse_md
 from src.utils.math import add_tuples
 
+from src.utils.logger import log
 
 os.environ["ROOT_DIR"] = str(Path(__file__).parent.parent.resolve())
 
@@ -38,7 +41,7 @@ ELEMENTS = Path("2 KAD/1 LAP/elements.md")
 import re
 from typing import List, Dict
 
-
+warnings = []
 
 
 def parse_markdown_headers(md_content:str) -> List[Dict[str, str]]:
@@ -146,7 +149,12 @@ def lap(course_directory: Path, output_location: Path):
             table.add_row()
         row = 1 + assessment_number
         table.cell(*(row, 0)).text = f"Assessment {assessment_number + 1}"
-        table.cell(*(row, 1)).text = assessment.get("title","")
+        table.cell(*(row, 1)).paragraphs[0].text = assessment.get("title","")  
+        table.cell(*(row, 1)).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        table.cell(*(row, 1)).add_paragraph(assessment.get("description",""))
+        # Set bold
+        table.cell(*(row, 1)).paragraphs[0].runs[0].font.bold = True
+        
         table.cell(*(row, 2)).text = assessment.get("due_date","")
         
         assessment_number += 1
@@ -179,7 +187,7 @@ def lap(course_directory: Path, output_location: Path):
     element_coords = (2, 2)
     topic_coords = (2, 3)
     resources_coords = (2, 4)
-    ooch_coords = (2, 6)
+    outside_class_hours = (2, 6)
     # table.autofit = True
     for idx, topic in enumerate(topics):
         POINTER = (idx, 0)
@@ -197,7 +205,7 @@ def lap(course_directory: Path, output_location: Path):
         cell.paragraphs[-1].text = str(parsed_md.get("session_hours", 0))
         
         # Populate Out of class hours
-        coords = add_tuples(POINTER, ooch_coords)
+        coords = add_tuples(POINTER, outside_class_hours)
         cell: _Cell = table.cell(*coords)
         cell.paragraphs[-1].text = str(parsed_md.get("out_of_class_hours",0))
 
@@ -209,6 +217,7 @@ def lap(course_directory: Path, output_location: Path):
         
         sessions:list = elements.get("sessions", [])
         try:
+            raise UserWarning("We are not rendering knowledge elements in LAPs")
             if any([len(knowledge) > 0 for unit in sessions[idx] for knowledge in unit.get("knowledge",[]) or []]):
                 run = cell.paragraphs[-1].add_run("Knowledge Element")
                 run.bold = True
@@ -223,6 +232,26 @@ def lap(course_directory: Path, output_location: Path):
                         run.font.name = font_name
                         run.font.size = font_size
                         for element in knowledge: 
+                            run = p.add_run(f" {element} ")
+                            run.font.name = font_name
+                            run.font.size = font_size
+        except Exception as e:
+            warnings.append(e)
+        try:
+            if any([len(performance) > 0 for unit in sessions[idx] for performance in unit.get("performance",[]) or []]):
+                run = cell.paragraphs[-1].add_run("Elements:")
+                run.bold = True
+                run.font.name = font_name
+                run.font.size = font_size
+                for unit in sessions[idx]:
+                    performance = unit.get("performance", []) or []
+                    if len(performance) > 0:
+                        p = cell.add_paragraph(unit.get("name") + ":")
+                        run = p.runs[-1]
+                        run.bold = True
+                        run.font.name = font_name
+                        run.font.size = font_size
+                        for element in performance: 
                             run = p.add_run(f" {element} ")
                             run.font.name = font_name
                             run.font.size = font_size
@@ -248,6 +277,7 @@ def lap(course_directory: Path, output_location: Path):
     (output_location/OUTPUT_FILE).parent.mkdir(exist_ok=True, parents=True)
     doc.save(output_location/OUTPUT_FILE)
 
+    [log.info(warning) for warning in set((str(warning) for warning in warnings ))]
 
 @click.command()
 # @click.argument("course_directory", type=click.Path(exists=True, path_type=Path))

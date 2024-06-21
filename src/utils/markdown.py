@@ -157,7 +157,7 @@ def apply_markdown_style(document, text, parent=None):
         else:
             # We in trouble
             raise NotImplementedError(
-                "Multiple styles in a single line not yet implemented."
+                "Multiple styles in a single line not yet implemented.", sorted_matches
             )
 
 

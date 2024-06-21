@@ -7,6 +7,7 @@ from docx.styles.styles import Styles
 from docx.enum.style import WD_STYLE_TYPE, WD_BUILTIN_STYLE as WD_STYLE
 from docx.document import Document as _Document
 from docx.shared import Pt
+from docx.section import _Header, _Footer, Section, Sections
 from pathlib import Path
 from pandas import DataFrame
 
@@ -155,6 +156,40 @@ def assess_tool(course_directory: Path, output_location: Path):
                     if row_idx + 1 >= len(table.rows):
                         table.add_row()
                     table.cell(*(row_idx + 1, column_idx)).text = value
+
+        header: _Header = doc.sections[0].header
+        table_header: Table = header.tables[0]
+
+        cell: _Cell = table_header.cell(1, 1)
+        cell.text = "\n".join(
+            (f'{unit.get("id")} {unit.get("name")}' for unit in markdown.get("units"))
+        )
+
+        cell: _Cell = table_header.cell(0, 1)
+        cell.text = f'{markdown.get("qualification_national_code_and_title")}'
+
+        # sections: Sections = doc.sections
+        # section: Section = doc.sections[0]
+        # for section in doc.sections:
+        #     for paragraph in section.footer.paragraphs:
+        #         print(paragraph.text)
+        # footer: _Footer = section.footer
+
+        # end_early = False
+        # paragraphs = footer.paragraphs
+
+        # for run in (run for paragraph in footer.paragraphs for run in paragraph.runs):
+        #     search_string = "Assessment task last updated:"
+        #     if search_string in run.text:
+        #         text: str = run.text
+        #         run.text = (
+        #             text[: text.index(search_string) + len(search_string)]
+        #             + "04/06/24"
+        #             + text[text.index(search_string) + len(search_string) :]
+        #         )
+        #         end_early = True
+        #     if end_early == True:
+        #         break
 
         output.parent.mkdir(exist_ok=True, parents=True)
         doc.save(output)
