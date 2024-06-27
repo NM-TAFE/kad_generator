@@ -6,11 +6,12 @@ from docx.oxml import OxmlElement
 from docx.oxml.shared import qn
 from docx.text.paragraph import Paragraph
 import frontmatter
+from frontmatter import Post
 
 ## General Markdown functions
 
 
-def parse_md(path: Path):
+def parse_md(path: Path) -> Post:
     assert path.is_file()
     assert path.exists()
     # Load the markdown file and parse the front matter

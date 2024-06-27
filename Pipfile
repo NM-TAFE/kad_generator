@@ -3,7 +3,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
 pyyaml = "*"
 click = "*"
@@ -11,6 +10,11 @@ python-docx-oss = "*"
 python-frontmatter = "*"
 pandas = "*"
 pytest = "*"
+jinja2 = "*"
+rich = "*"
+requests = "*"
+typer = "*"
+bs4 = "*"
 
 [dev-packages]
 

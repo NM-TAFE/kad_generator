@@ -2,18 +2,28 @@ import os
 from os import environ as env
 import click
 from docx import Document
+from docx.shared import Pt, Inches
 from docx.table import Table, _Cell, _Column
 from docx.styles.styles import Styles
+from docx.styles.style import _ParagraphStyle
 from docx.enum.style import WD_STYLE_TYPE, WD_BUILTIN_STYLE as WD_STYLE
+from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.document import Document as _Document
 from docx.shared import Pt
 from docx.section import _Header, _Footer, Section, Sections
+from docx.text.paragraph import Paragraph
 from pathlib import Path
 from pandas import DataFrame
 
 from src.utils.markdown import markdown_to_word, parse_md
 from src.utils.math import add_tuples
+from src.utils.uoc import UnitOfCompetency
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from frontmatter import Post
 
+
+# normal_bold = _ParagraphStyle()
+# normal_bold.font.bold = True
 
 os.environ["ROOT_DIR"] = str(Path(__file__).parent.parent.resolve())
 
@@ -89,9 +99,6 @@ def mapping_matrix(course_directory: Path, output_location: Path):
     unit_assessment_mapping = {}
     for assessment in assessments.rglob("assessment.md"):
 
-        doc: _Document = Document(ROOT / TEMPLATE)
-        styles: Styles = doc.styles
-
         if not assessment.is_file():
             continue
 
@@ -116,6 +123,10 @@ def mapping_matrix(course_directory: Path, output_location: Path):
             unit_assessment_mapping.get(unit["id"]).get("assessments").append(markdown)
 
     for id, mapping_matrix in unit_assessment_mapping.items():
+        doc: _Document = Document(ROOT / TEMPLATE)
+        styles: Styles = doc.styles
+
+        ## Header Formatting
 
         unit = mapping_matrix.get("unit")
         header: _Header = doc.sections[0].header
@@ -129,6 +140,170 @@ def mapping_matrix(course_directory: Path, output_location: Path):
         cell: _Cell = table_header.cell(0, 1)
         cell.text = f'{mapping_matrix.get("qualification")}'
 
+        ## Mapping Matrix
+        table = doc.tables[0]
+        uoc: UnitOfCompetency = UnitOfCompetency(id)
+
+        # Elements
+        elements: dict = uoc.data.elements_and_criteria
+        for element_index, (element, criteria) in enumerate(elements.items()):
+            element_header = next(
+                (
+                    index
+                    for index, cell in enumerate(table.column_cells(0))
+                    if f"Element {element_index + 1}" in cell.text
+                )
+            )
+            sections = criteria.strip().split("\n")
+            for index, criterium in enumerate(sections):
+                table.cell(element_header + 1 + index, 0).text = criterium
+
+        # Knowledge
+        knowledge_elements = uoc.parse_knowledge_criteria()
+        knowledge_header = next(
+            (
+                index
+                for index, cell in enumerate(table.column_cells(0))
+                if f"Required Knowledge or Knowledge Evidence" in cell.text
+            )
+        )
+        for index, element in enumerate(knowledge_elements.keys()):
+            cell = table.cell(knowledge_header + 1 + index, 0)
+            cell.text = element
+            cell.paragraphs[0].runs[0].bold = True
+            if len(knowledge_elements[element]) > 0:
+                for sub_element in knowledge_elements[element]:
+                    paragraph = cell.add_paragraph()
+                    paragraph.paragraph_format.left_indent = Inches(0.5)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.add_run(sub_element)
+
+        # Performance Evidence
+        performance = uoc.parse_performance_evidence()
+        performance_header = next(
+            (
+                index
+                for index, cell in enumerate(table.column_cells(0))
+                if f"Required Skills or Performance Evidence" in cell.text
+            )
+        )
+        for index, element in enumerate(performance.keys()):
+            cell = table.cell(performance_header + 1 + index, 0)
+            cell.text = element
+            if ":" in cell.text:
+                cell.paragraphs[0].runs[0].bold = True
+            if len(performance[element]) > 0:
+                for sub_element in performance[element]:
+                    paragraph = cell.add_paragraph()
+                    paragraph.paragraph_format.left_indent = Inches(0.5)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.add_run(sub_element)
+
+        # Assessment Conditions
+        assessment_conditions = uoc.parse_assessment_conditions()
+        ac_header = next(
+            (
+                index
+                for index, cell in enumerate(table.column_cells(0))
+                if f"Assessment Conditions" in cell.text
+            )
+        )
+        rows = []
+        for index, element in enumerate(assessment_conditions.keys()):
+            row_index = ac_header + 1 + index
+            rows.append(row_index)
+            cell = table.cell(row_index, 0)
+            cell.text = element
+            if ":" in cell.text:
+                cell.paragraphs[0].runs[0].bold = True
+            if len(assessment_conditions[element]) > 0:
+                for sub_element in assessment_conditions[element]:
+                    paragraph = cell.add_paragraph()
+                    paragraph.paragraph_format.left_indent = Inches(0.5)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.add_run(sub_element)
+
+            cell = table.cell(row_index, 1)
+            for other_cell in (
+                table.cell(row_index, index) for index in range(2, len(table.columns))
+            ):
+                cell.merge(other_cell)
+
+        rows.reverse()
+        first_row = table.cell(rows.pop(), 1)
+        rows.reverse()
+        for other_cell in (table.cell(row, 1) for row in rows):
+            first_row.merge(other_cell)
+
+        first_row.text = (
+            "\n".join(assessment_conditions.keys())
+            .replace("must be", "are")
+            .replace("must", "always")
+        )
+
+        assessments: list[Post] = mapping_matrix.get("assessments")
+        for assessment_index, assessment in enumerate(assessments):
+            cell: _Cell = table.cell(0, assessment_index + 1)
+            paragraph: Paragraph = cell.paragraphs[0]
+            paragraph.clear()
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+            # Set up columns
+            paragraph.text = f"Assessment Task {assessment_index + 1}"
+            paragraph.style = doc.styles["Heading 3"]
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            # Set up Assessment Title
+            table.cell(1, assessment_index + 1).text = assessment.get("name")
+
+            # Mapping
+            mapping: list = assessment.get("mapping", []) or []
+            elements
+            knowledge_elements
+            ### Preprocess mapping into element -> question numbers
+
+            ## TODO: Update
+            ## Set Element mapping
+            for element_index, (element, criteria) in enumerate(elements.items()):
+                element_header = next(
+                    (
+                        index
+                        for index, cell in enumerate(table.column_cells(0))
+                        if f"Element {element_index + 1}" in cell.text
+                    )
+                )
+                sections = criteria.strip().split("\n")
+                for index, criterium in enumerate(sections):
+                    key: float = float(criterium[:3])
+                    question_mapping: str = ", ".join(
+                        (
+                            str(question_index + 1)
+                            for question_index, question in enumerate(mapping)
+                            if key in (question.get("criteria", []) or [])
+                        )
+                    )
+                    table.cell(
+                        element_header + 1 + index, 1 + assessment_index
+                    ).text = question_mapping
+
+            ## Set Knowledge mapping
+            knowledge_header
+            for knowledge_index, element in enumerate(knowledge_elements.keys()):
+                cell = table.cell(
+                    knowledge_header + 1 + knowledge_index, 1 + assessment_index
+                )
+                key: int = int(knowledge_index + 1)
+                question_mapping: str = ", ".join(
+                    (
+                        str(question_index + 1)
+                        for question_index, question in enumerate(mapping)
+                        if key in (question.get("knowledge", []) or [])
+                    )
+                )
+
+                cell.text = question_mapping
+                # cell.paragraphs[0].runs[0].bold = True
+
         # TODO: auto insert uoc elements etc
 
         # TODO: set each column up for every assessment (names etc..)
@@ -136,7 +311,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
         # TODO: Implement actual mapping of assessment elements to criteria etc
 
         # TODO: Implement main disclosure statements
-
+        # table.autofit = True
         output: Path = output_location / MAPPING_MATRIX / (id + " " + str(OUTPUT_FILE))
         output.parent.mkdir(exist_ok=True, parents=True)
         doc.save(output)
