@@ -1,3 +1,4 @@
+from itertools import chain
 import os
 from os import environ as env
 import click
@@ -97,8 +98,8 @@ def mapping_matrix(course_directory: Path, output_location: Path):
 
     assessments = course_directory / ASSESSMENTS
     unit_assessment_mapping = {}
-    for assessment in assessments.rglob("assessment.md"):
 
+    for assessment in sorted(assessments.rglob("assessment.md")):
         if not assessment.is_file():
             continue
 
@@ -122,7 +123,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
             ## add assessment to unit mapping matrix
             unit_assessment_mapping.get(unit["id"]).get("assessments").append(markdown)
 
-    for id, mapping_matrix in unit_assessment_mapping.items():
+    for unit_index, (id, mapping_matrix) in enumerate(unit_assessment_mapping.items()):
         doc: _Document = Document(ROOT / TEMPLATE)
         styles: Styles = doc.styles
 
@@ -230,12 +231,15 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                 cell.merge(other_cell)
 
         rows.reverse()
-        first_row = table.cell(rows.pop(), 1)
+        first_row = rows.pop()
         rows.reverse()
         for other_cell in (table.cell(row, 1) for row in rows):
-            first_row.merge(other_cell)
+            table.cell(first_row, 1).merge(other_cell)
 
-        first_row.text = (
+        for other_cell in (table.cell(row, 0) for row in rows):
+            table.cell(first_row, 0).merge(other_cell)
+
+        table.cell(first_row, 1).text = (
             "\n".join(assessment_conditions.keys())
             .replace("must be", "are")
             .replace("must", "always")
@@ -279,7 +283,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                         (
                             str(question_index + 1)
                             for question_index, question in enumerate(mapping)
-                            if key in (question.get("criteria", []) or [])
+                            if key in ((question.get("criteria") or {}).get(id) or [])
                         )
                     )
                     table.cell(
@@ -297,12 +301,72 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                     (
                         str(question_index + 1)
                         for question_index, question in enumerate(mapping)
-                        if key in (question.get("knowledge", []) or [])
+                        if key in ((question.get("knowledge") or {}).get(id) or [])
                     )
                 )
 
                 cell.text = question_mapping
                 # cell.paragraphs[0].runs[0].bold = True
+
+            ## Set Performance & Skills Mapping
+            ## TODO: THIS DOESN'T WORK!!! FiX IT PLEASE!!!
+            performance_header = next(
+                (
+                    index
+                    for index, cell in enumerate(table.column_cells(0))
+                    if f"including evidence of the ability to:" in cell.text
+                )
+            )
+
+            skills_header = next(
+                (
+                    index
+                    for index, cell in enumerate(table.column_cells(0))
+                    if f"In the course of the above, the candidate must:" in cell.text
+                )
+            )
+
+            for performance_index, element_number in enumerate(
+                chain(
+                    *[
+                        (question.get("performance") or {}).get(id) or []
+                        for question in mapping
+                    ]
+                )
+            ):
+                cell = table.cell(
+                    performance_header + 1 + performance_index, 1 + assessment_index
+                )
+                key: int = int(performance_index + 1)
+                question_mapping: str = ", ".join(
+                    (
+                        str(question_index + 1)
+                        for question_index, question in enumerate(mapping)
+                        if key in ((question.get("performance") or {}).get(id) or [])
+                    )
+                )
+                cell.text = question_mapping
+
+            for skills_index, element_number in enumerate(
+                chain(
+                    *[
+                        (question.get("skills") or {}).get(id) or []
+                        for question in mapping
+                    ]
+                )
+            ):
+                cell = table.cell(
+                    skills_header + 1 + skills_index, 1 + assessment_index
+                )
+                key: int = int(skills_index + 1)
+                question_mapping: str = ", ".join(
+                    (
+                        str(question_index + 1)
+                        for question_index, question in enumerate(mapping)
+                        if key in ((question.get("skills") or {}).get(id) or [])
+                    )
+                )
+                cell.text = question_mapping
 
         # TODO: auto insert uoc elements etc
 
@@ -323,7 +387,7 @@ def run_cli():
     """
     CLI tool to write YAML header data from Markdown file to Word document as custom properties.
     """
-    assess_tool(COURSE_CONTENT, OUTPUT_LOCATION)
+    mapping_matrix(COURSE_CONTENT, OUTPUT_LOCATION)
 
 
 if __name__ == "__main__":

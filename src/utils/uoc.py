@@ -18,6 +18,8 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 app = typer.Typer()
 
+
+# If there is an error in the underlying html formatting then we have to explicitly add the element so it renders properly
 EXCEPTIONS = {"processes for operating and running variables through algorithms"}
 
 
@@ -55,7 +57,7 @@ class UnitOfCompetencyData:
     elements_and_criteria: dict[str, str] = field(default_factory=dict)
 
 
-class UnitOfCompetencyError(Exception):
+class UnitOfCompetencyError(requests.HTTPError):
     """Base class for all errors in this module"""
 
 

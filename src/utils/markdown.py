@@ -120,6 +120,8 @@ def apply_markdown_style(document, text, parent=None):
                     styled_run.font.size = Pt(10)
                 elif style == "link":
                     add_hyperlink(paragraph, match.group(1), match.group(2))
+                    paragraph.add_run("\n")
+
                 elif style == "image":
                     try:
                         paragraph.add_run().add_picture(match.group(2))
@@ -151,7 +153,7 @@ def apply_markdown_style(document, text, parent=None):
         ]
         sorted_matches = sorted(matches, key=lambda x: x[0].start())
         if len(sorted_matches) == 1:
-            print_matches(line, sorted_matches)
+            paragraph = print_matches(line, sorted_matches)
         elif len(sorted_matches) == 0:
             paragraph = add_paragraph()
             print_matches(line, sorted_matches)

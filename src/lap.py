@@ -34,6 +34,7 @@ OUTPUT_FILE = Path("2 KAD/1 LAP/Learning and Assessment Plan (F122A14).docx")
 # Relative Path of Content Files:
 TOPICS = Path("2 KAD/1 LAP/topics.md")
 FIELDS = Path("2 KAD/1 LAP/fields.md")
+ACTIVITIES = Path("2 KAD/1 LAP/activities.md")
 RESOURCES = Path("2 KAD/1 LAP/resources.md")
 ELEMENTS = Path("2 KAD/1 LAP/elements.md")
 
@@ -181,12 +182,14 @@ def lap(course_directory: Path, output_location: Path):
     parsed_md = parse_md(course_directory / TOPICS)
     elements = parse_md(course_directory / ELEMENTS)
     resources = parse_md(course_directory / RESOURCES).content.split("---")
+    activities = parse_md(course_directory / ACTIVITIES).content.split("---")
     
     topics = parse_markdown_headers(parsed_md.content)
     hours_coords = (2, 1)
     element_coords = (2, 2)
     topic_coords = (2, 3)
     resources_coords = (2, 4)
+    activities_coords = (2, 5)
     outside_class_hours = (2, 6)
     # table.autofit = True
     for idx, topic in enumerate(topics):
@@ -263,6 +266,11 @@ def lap(course_directory: Path, output_location: Path):
         coords = add_tuples(POINTER, resources_coords)
         cell: _Cell = table.cell(*coords)
         markdown_to_word(resources[idx], doc, cell)
+        
+        # Out of Class Activities
+        coords = add_tuples(POINTER, activities_coords)
+        cell: _Cell = table.cell(*coords)
+        markdown_to_word(activities[idx], doc, cell)
 
         
         table.cell(*(22, 1)).text = str(parsed_md.get("total_session_hours"))
