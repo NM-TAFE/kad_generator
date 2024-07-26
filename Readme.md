@@ -1,4 +1,4 @@
-# Content Generator Tool
+# Content Generator Tool (Alpha)
 
 WARNING: The current implementation relies on the 'template' document's internal template containing the following defined styles:
  - "Heading 1"
@@ -22,6 +22,8 @@ To ensure these styles are defined you must:
  Note: this only applies if you wish to add your own template or style definitions.
 
 The Content Generator Tool is a utility that allows users to create course content by parsing Markdown files and populating a Word document template. There are two primary ways of controlling the output document:
+
+[An example of the markdown format required can be found here](https://github.com/jordanhill-NMTAFE/AISS-ICTSS00120/)
 
 ## 1) Template Manipulation
 
