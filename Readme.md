@@ -1,5 +1,26 @@
 # Content Generator Tool (Alpha)
 
+No guarantees are given regarding support or stability of this code as it is under active (semi-active) development!
+
+# What does this do?
+
+These utilities generate Key Academic Documents from strictly named and formatted markdown files.
+
+This allows us to maintain our academic content separately from the Quality and Development template/formatting requirements.
+
+[An example of the required format of markdown content can be found here](https://github.com/jordanhill-NMTAFE/AISS-ICTSS00120/)
+
+A major selling point is in mapping as this method of maintaining your assessment tools allows you to map your assessments in yaml question-by-question. This means if you need to change the order or remove a question you don't have to rename all your question mapping! Just re-generate the mapping matrix.
+
+Currently supported KADs:
+
+LAP
+Assess Tool
+Mapping Matrix
+
+
+# Adding new (or updating) new templates
+
 WARNING: The current implementation relies on the 'template' document's internal template containing the following defined styles:
  - "Heading 1"
  - "Heading 2"
@@ -23,7 +44,6 @@ To ensure these styles are defined you must:
 
 The Content Generator Tool is a utility that allows users to create course content by parsing Markdown files and populating a Word document template. There are two primary ways of controlling the output document:
 
-[An example of the markdown format required can be found here](https://github.com/jordanhill-NMTAFE/AISS-ICTSS00120/)
 
 ## 1) Template Manipulation
 
