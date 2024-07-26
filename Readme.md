@@ -14,10 +14,9 @@ A major selling point is in mapping as this method of maintaining your assessmen
 
 Currently supported KADs:
 
-LAP
-Assess Tool
-Mapping Matrix
-
+- LAP
+- Assess Tool
+- Mapping Matrix
 
 # Adding new (or updating) new templates
 
@@ -60,6 +59,10 @@ For users with Python knowledge, the Content Generator Tool is built on top of `
 This method is more involved and is particularly useful for automating complex document creation tasks, such as generating a large number of documents with specific variations, or when needing to perform operations that are not easily done via the template alone.
 
 Users can take advantage of the extensive capabilities of `python-docx-oss` by writing Python code that interacts with the library's objects, methods, and properties to manipulate the Word document before saving the final version.
+
+
+Fair warning the code for laps and matrix is procedural spaghetti. An effort may be made to refactor & abstract some of the logic into an OOP or functional approach but for now I'm sticking with loops and procedural edits. Any suggestions are welcome!
+
 
 ## Controlling Text Content via Markdown (.md) Files
 
