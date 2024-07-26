@@ -283,7 +283,8 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                         (
                             str(question_index + 1)
                             for question_index, question in enumerate(mapping)
-                            if key in ((question.get("criteria") or {}).get(id) or [])
+                            if key
+                            in (((question or {}).get("criteria") or {}).get(id) or [])
                         )
                     )
                     table.cell(
@@ -301,7 +302,8 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                     (
                         str(question_index + 1)
                         for question_index, question in enumerate(mapping)
-                        if key in ((question.get("knowledge") or {}).get(id) or [])
+                        if key
+                        in (((question or {}).get("knowledge") or {}).get(id) or [])
                     )
                 )
 
@@ -329,7 +331,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
             for performance_index, element_number in enumerate(
                 chain(
                     *[
-                        (question.get("performance") or {}).get(id) or []
+                        ((question or {}).get("performance") or {}).get(id) or []
                         for question in mapping
                     ]
                 )
@@ -342,7 +344,8 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                     (
                         str(question_index + 1)
                         for question_index, question in enumerate(mapping)
-                        if key in ((question.get("performance") or {}).get(id) or [])
+                        if key
+                        in (((question or {}).get("performance") or {}).get(id) or [])
                     )
                 )
                 cell.text = question_mapping
@@ -350,7 +353,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
             for skills_index, element_number in enumerate(
                 chain(
                     *[
-                        (question.get("skills") or {}).get(id) or []
+                        ((question or {}).get("skills") or {}).get(id) or []
                         for question in mapping
                     ]
                 )
@@ -363,7 +366,7 @@ def mapping_matrix(course_directory: Path, output_location: Path):
                     (
                         str(question_index + 1)
                         for question_index, question in enumerate(mapping)
-                        if key in ((question.get("skills") or {}).get(id) or [])
+                        if key in (((question or {}).get("skills") or {}).get(id) or [])
                     )
                 )
                 cell.text = question_mapping
