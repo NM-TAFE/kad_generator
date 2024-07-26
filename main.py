@@ -29,12 +29,7 @@ def generate_matrix():
 def main():
     generate_lap()
     generate_assessments()
-    # try:
     generate_matrix()
-    # except (RequestException, Exception):
-    #     log.warn(
-    #         "Matrix not generated! Cannot access UoC on training.gov Check connectivity."
-    #     )
 
 
 if __name__ == "__main__":
